@@ -17,7 +17,14 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.TextView;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+
+import android.widget.Toast;
+import cn.bmob.v3.Bmob;
+import cn.bmob.v3.datatype.BmobGeoPoint;
+import cn.bmob.v3.listener.SaveListener;
 
 public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback {
 
@@ -44,7 +51,15 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 //            }
 
             mData = data;
+
+
+
             //Get GPS
+
+             //注册广播
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Common.LOCATION_ACTION);
+            MainActivity.this.registerReceiver(new LocationBroadcastReceiver(), filter);
 
             Intent intent = new Intent();
             intent.setClass(MainActivity.this, LocationSvc.class);
@@ -59,11 +74,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 //            intent = new Intent(MainActivity.this, ResultActivity.class);
 //            intent.putExtra("success", success);
 //            startActivity(intent);
-
+//
 //            od.open();
 //            long success = od.insertData("time", "GPS", bm);
 //            od.close();
-
+//
 //            intent = new Intent(MainActivity.this, ResultActivity.class);
 //            intent.putExtra("success", success);
 //            startActivity(intent);
@@ -78,11 +93,15 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Bmob.initialize(this, "087ee08e4ffbd42c7602d0facd018f71");
         setContentView(R.layout.activity_main);
         mPreview = (SurfaceView) findViewById(R.id.preview);
         mLoca = (TextView) findViewById(R.id.tv_loca);
         mHolder = mPreview.getHolder();
         mHolder.addCallback(this);
+
+
+
 
     }
 
@@ -95,10 +114,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 setStartPreview(mCamera, mHolder);
             }
         }
-        // 注册广播
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Common.LOCATION_ACTION);
-        this.registerReceiver(new LocationBroadcastReceiver(), filter);
+
     }
 
     @Override
@@ -207,11 +223,37 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             Date d = new Date();
             od.open();
             Log.i("time", d.toString());
-            long success = od.insertData(d.toGMTString(), mLocationLatitude, mLocationLongitude, bm);
+            long success = od.insertData(d.toString(), mLocationLatitude, mLocationLongitude, bm);
             od.close();
+            final PicInfo upload = new PicInfo();
+            BmobGeoPoint point = new BmobGeoPoint(mLocationLongitude,mLocationLatitude);
+            List<Byte> pic = new ArrayList<Byte>();
+            for(int i=0;i<mData.length;i++){
+                pic.add(mData[i]);
+            }
+
+            upload.setPicTime(new Date());
+            upload.setGpsAdd(point);
+            upload.setPic(pic);
+
+            upload.save(MainActivity.this, new SaveListener() {
+                @Override
+                public void onSuccess() {
+                    // TODO Auto-generated method stub
+
+                    Toast.makeText(MainActivity.this, "图片上传成功",Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onFailure(int code, String msg) {
+                    // TODO Auto-generated method stub
+                    Toast.makeText(MainActivity.this, "图片上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
+                }
+            });
+
 
             mDialog.dismiss();
-            //MainActivity.this.unregisterReceiver(this);// 不需要时注销
+            MainActivity.this.unregisterReceiver(this);// 不需要时注销
         }
     }
 }

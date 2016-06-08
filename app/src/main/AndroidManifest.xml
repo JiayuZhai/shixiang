@@ -19,12 +19,13 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
         <activity android:name=".ResultActivity" />
-        <activity android:name=".PicListActivity"></activity>
+        <activity android:name=".PicListActivity" />
 
         <service android:name=".LocationSvc" />
+
+        <activity android:name=".DownloadActivity"></activity>
     </application>
 
 </manifest>

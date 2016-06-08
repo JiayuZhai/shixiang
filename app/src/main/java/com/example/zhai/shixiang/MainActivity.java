@@ -84,11 +84,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         mHolder = mPreview.getHolder();
         mHolder.addCallback(this);
 
-        // 注册广播
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Common.LOCATION_ACTION);
-        this.registerReceiver(new LocationBroadcastReceiver(), filter);
-
     }
 
     @Override
@@ -100,6 +95,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 setStartPreview(mCamera, mHolder);
             }
         }
+        // 注册广播
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Common.LOCATION_ACTION);
+        this.registerReceiver(new LocationBroadcastReceiver(), filter);
     }
 
     @Override
@@ -212,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             od.close();
 
             mDialog.dismiss();
-            MainActivity.this.unregisterReceiver(this);// 不需要时注销
+            //MainActivity.this.unregisterReceiver(this);// 不需要时注销
         }
     }
 }

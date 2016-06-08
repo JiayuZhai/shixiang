@@ -159,7 +159,7 @@ public class DownloadActivity extends AppCompatActivity {
                 }
                 @Override
                 public void onError(int code, String msg) {
-                    // TODO Auto-generated method stub
+                    /// TODO Auto-generated method stub
                     Toast.makeText(DownloadActivity.this, "查询失败：" + msg ,Toast.LENGTH_SHORT).show();
                 }
             });

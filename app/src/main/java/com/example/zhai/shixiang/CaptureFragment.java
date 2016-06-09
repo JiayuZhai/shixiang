@@ -9,104 +9,142 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
-import android.support.v7.app.AppCompatActivity;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import android.widget.Toast;
 import cn.bmob.v3.Bmob;
 import cn.bmob.v3.datatype.BmobGeoPoint;
 import cn.bmob.v3.listener.SaveListener;
 
-public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback {
 
-    private Camera mCamera;
+/**
+ * A simple {@link Fragment} subclass.
+ * Activities that contain this fragment must implement the
+ * {@link CaptureFragment.OnFragmentInteractionListener} interface
+ * to handle interaction events.
+ */
+public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
+    private OnFragmentInteractionListener mListener;
+
     private SurfaceView mPreview;
+    private TextView mLoca;
     private SurfaceHolder mHolder;
+    private Camera mCamera;
     private byte[] mData = {};
+    private ProgressDialog mDialog;
+    double mLocationLatitude;
+    double mLocationLongitude;
+    private Button capture;
+    private Button clear;
+    private Button viewDatabase;
     private Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
-//            File tempFile = new File("/temp.png");
-//            try {
-//                FileOutputStream fos = new FileOutputStream(tempFile);//暂时不能用，尝试先存到数据库里
-//                fos.write(data);
-//                fos.close();
-//                Intent intent = new Intent(MainActivity.this, ResultActivity.class);
-//                intent.putExtra("picPath", tempFile.getAbsolutePath());
-//                startActivity(intent);
-//                MainActivity.this.finish();
-//            } catch (FileNotFoundException e) {
-//                e.printStackTrace();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-
             mData = data;
-
-
 
             //Get GPS
 
-             //注册广播
+            //注册广播
             IntentFilter filter = new IntentFilter();
             filter.addAction(Common.LOCATION_ACTION);
-            MainActivity.this.registerReceiver(new LocationBroadcastReceiver(), filter);
+            getActivity().registerReceiver(new LocationBroadcastReceiver(), filter);
 
             Intent intent = new Intent();
-            intent.setClass(MainActivity.this, LocationSvc.class);
+            intent.setClass(getActivity(), LocationSvc.class);
             //Log.i("running","start over");
-            MainActivity.this.startService(intent);
+            getActivity().startService(intent);
 
-            mDialog = new ProgressDialog(MainActivity.this);
+            mDialog = new ProgressDialog(getActivity());
             mDialog.setMessage("正在定位...");
             mDialog.setCancelable(false);
             mDialog.show();
 
-//            intent = new Intent(MainActivity.this, ResultActivity.class);
-//            intent.putExtra("success", success);
-//            startActivity(intent);
-//
-//            od.open();
-//            long success = od.insertData("time", "GPS", bm);
-//            od.close();
-//
-//            intent = new Intent(MainActivity.this, ResultActivity.class);
-//            intent.putExtra("success", success);
-//            startActivity(intent);
         }
     };
 
-    private TextView mLoca;
-    private ProgressDialog mDialog;
-    double mLocationLatitude;
-    double mLocationLongitude;
+    private View.OnClickListener listener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            switch(v.getId()){
+                case R.id.capture:
+                    capture();
+                    break;
+                case R.id.clear:
+                    clear();
+                    break;
+                case R.id.viewDatabase:
+                    viewDatabase();
+                    break;
+            }
+        }
+    };
+
+    public CaptureFragment() {
+        // Required empty public constructor
+    }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Bmob.initialize(this, "087ee08e4ffbd42c7602d0facd018f71");
-        setContentView(R.layout.activity_main);
-        mPreview = (SurfaceView) findViewById(R.id.preview);
-        mLoca = (TextView) findViewById(R.id.tv_loca);
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        View view = inflater.inflate(R.layout.fragment_capture, container, false);
+
+        mPreview = (SurfaceView) view.findViewById(R.id.preview);
+        mLoca = (TextView) view.findViewById(R.id.tv_loca);
+        capture = (Button) view.findViewById(R.id.capture);
+        clear = (Button) view.findViewById(R.id.clear);
+        viewDatabase = (Button) view.findViewById(R.id.viewDatabase);
+        capture.setOnClickListener(listener);
+        clear.setOnClickListener(listener);
+        viewDatabase.setOnClickListener(listener);
+
+
         mHolder = mPreview.getHolder();
         mHolder.addCallback(this);
+        return view;
+    }
 
 
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        if (context instanceof OnFragmentInteractionListener) {
+            mListener = (OnFragmentInteractionListener) context;
+        } else {
+            throw new RuntimeException(context.toString()
+                    + " must implement OnFragmentInteractionListener");
+        }
+    }
 
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        mListener = null;
 
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         if(mCamera == null){
             mCamera = getCamera();
@@ -114,16 +152,30 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 setStartPreview(mCamera, mHolder);
             }
         }
-
     }
 
     @Override
-    protected void onPause() {
+    public void onPause() {
         super.onPause();
         releaseCamera();
     }
 
-    public void capture (View view){
+    /**
+     * This interface must be implemented by activities that contain this
+     * fragment to allow an interaction in this fragment to be communicated
+     * to the activity and potentially other fragments contained in that
+     * activity.
+     * <p/>
+     * See the Android Training lesson <a href=
+     * "http://developer.android.com/training/basics/fragments/communicating.html"
+     * >Communicating with Other Fragments</a> for more information.
+     */
+    public interface OnFragmentInteractionListener {
+        // TODO: Update argument type and name
+        void onFragmentInteraction(Uri uri);
+    }
+
+    public void capture (){
         Camera.Parameters parameters = mCamera.getParameters();
         parameters.setPictureFormat(ImageFormat.JPEG);
         parameters.setPreviewSize(800, 400);
@@ -138,31 +190,16 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         });
     }
 
-    public void clear(View view){
-        MainDatabase od = new MainDatabase(MainActivity.this);
+    public void clear(){
+        MainDatabase od = new MainDatabase(getActivity());
         od.open();
         od.clearDatabase();
         od.close();
     }
 
-    public void viewDatabase(View view){
-        Intent i = new Intent(MainActivity.this, PicListActivity.class);
+    public void viewDatabase(){
+        Intent i = new Intent(getActivity(), PicListActivity.class);
         startActivity(i);
-    }
-
-    /**
-     * get the camera resource
-     * @return
-     */
-    private Camera getCamera(){
-        Camera camera;
-        try {
-            camera = Camera.open();
-        } catch(Exception e){
-            camera = null;
-            e.printStackTrace();
-        }
-        return camera;
     }
 
     /**
@@ -178,6 +215,21 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * get the camera resource
+     * @return
+     */
+    private Camera getCamera(){
+        Camera camera;
+        try {
+            camera = Camera.open();
+        } catch(Exception e){
+            camera = null;
+            e.printStackTrace();
+        }
+        return camera;
     }
 
     /**
@@ -207,7 +259,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public void surfaceDestroyed(SurfaceHolder holder) {
         releaseCamera();
     }
-
     private class LocationBroadcastReceiver extends BroadcastReceiver {
 
         @Override
@@ -218,13 +269,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             mLoca.setText("纬度" + mLocationLatitude + "\n经度" + mLocationLongitude);
 
             Bitmap bm = BitmapFactory.decodeByteArray(mData, 0, mData.length);
-            //open database
-            MainDatabase od = new MainDatabase(MainActivity.this);
-            Date d = new Date();
-            od.open();
-            Log.i("time", d.toString());
-            long success = od.insertData(d.toString(), mLocationLatitude, mLocationLongitude, bm);
-            od.close();
+//            //open database
+//            MainDatabase od = new MainDatabase(getActivity());
+//            Date d = new Date();
+//            od.open();
+//            Log.i("time", d.toString());
+//            long success = od.insertData(d.toString(), mLocationLatitude, mLocationLongitude, bm);
+//            od.close();
             final PicInfo upload = new PicInfo();
             BmobGeoPoint point = new BmobGeoPoint(mLocationLongitude,mLocationLatitude);
             List<Byte> pic = new ArrayList<Byte>();
@@ -236,24 +287,25 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             upload.setGpsAdd(point);
             upload.setPic(pic);
 
-            upload.save(MainActivity.this, new SaveListener() {
+            upload.save(getActivity(), new SaveListener() {
                 @Override
                 public void onSuccess() {
                     // TODO Auto-generated method stub
 
-                    Toast.makeText(MainActivity.this, "图片上传成功",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "上传成功",Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
                 public void onFailure(int code, String msg) {
                     // TODO Auto-generated method stub
-                    Toast.makeText(MainActivity.this, "图片上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
                 }
             });
 
 
             mDialog.dismiss();
-            MainActivity.this.unregisterReceiver(this);// 不需要时注销
+            getActivity().unregisterReceiver(this);// 不需要时注销
         }
     }
+
 }

@@ -1,5 +1,7 @@
 package com.example.zhai.shixiang;
 
+import android.graphics.Bitmap;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -15,7 +17,7 @@ import cn.bmob.v3.datatype.BmobGeoPoint;
 public class PicInfo extends BmobObject {
     private BmobDate date;
     private BmobGeoPoint gpsAdd;
-    private List<Byte> pic;
+    private BmobFile pic;
 
     public void setPicTime(Date date){
         this.date = new BmobDate(date);
@@ -31,10 +33,10 @@ public class PicInfo extends BmobObject {
         this.gpsAdd = gpsAdd;
     }
 
-    public List<Byte> getPic(){
+    public BmobFile getPic(){
         return this.pic;
     }
-    public void setPic(List<Byte> pic){
+    public void setPic(BmobFile pic){
         this.pic = pic;
     }
 }

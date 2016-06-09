@@ -11,6 +11,7 @@ import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -22,12 +23,17 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 
 import cn.bmob.v3.Bmob;
+import cn.bmob.v3.datatype.BmobFile;
 import cn.bmob.v3.datatype.BmobGeoPoint;
 import cn.bmob.v3.listener.SaveListener;
 
@@ -55,6 +61,15 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
     private Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
+            Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bm.compress(Bitmap.CompressFormat.JPEG,70,baos);
+            mData = baos.toByteArray();
+            try {
+                baos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             mData = data;
 
             //Get GPS
@@ -269,6 +284,7 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
             mLoca.setText("纬度" + mLocationLatitude + "\n经度" + mLocationLongitude);
 
             Bitmap bm = BitmapFactory.decodeByteArray(mData, 0, mData.length);
+            Uri uri = Uri.parse(MediaStore.Images.Media.insertImage(getActivity().getContentResolver(), bm, "from shixiang",null));
 //            //open database
 //            MainDatabase od = new MainDatabase(getActivity());
 //            Date d = new Date();
@@ -278,10 +294,14 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
 //            od.close();
             final PicInfo upload = new PicInfo();
             BmobGeoPoint point = new BmobGeoPoint(mLocationLongitude,mLocationLatitude);
-            List<Byte> pic = new ArrayList<Byte>();
-            for(int i=0;i<mData.length;i++){
-                pic.add(mData[i]);
-            }
+//            List<Byte> pic = new ArrayList<Byte>();
+//            for(int i=0;i<mData.length;i++){
+//                pic.add(mData[i]);
+//            }
+
+            BmobFile pic = new BmobFile(new File(uri.toString()));
+//            List<Bitmap> pic = new ArrayList<Bitmap>();
+//            pic.add(bm);
 
             upload.setPicTime(new Date());
             upload.setGpsAdd(point);
@@ -291,13 +311,14 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
                 @Override
                 public void onSuccess() {
                     // TODO Auto-generated method stub
-
+                    mDialog.dismiss();
                     Toast.makeText(getActivity(), "上传成功",Toast.LENGTH_SHORT).show();
                 }
 
                 @Override
                 public void onFailure(int code, String msg) {
                     // TODO Auto-generated method stub
+                    mDialog.dismiss();
                     Toast.makeText(getActivity(), "上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
                 }
             });
@@ -305,6 +326,11 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
 
             mDialog.dismiss();
             getActivity().unregisterReceiver(this);// 不需要时注销
+
+            mDialog = new ProgressDialog(getActivity());
+            mDialog.setMessage("正在上传..");
+            mDialog.setCancelable(false);
+            mDialog.show();
         }
     }
 

@@ -14,12 +14,12 @@
         android:orientation="vertical"
         tools:context="com.example.zhai.shixiang.DownloadActivity">
 
-        <ListView
+        <com.handmark.pulltorefresh.library.PullToRefreshListView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:id="@+id/downloadpiclist">
 
-        </ListView>
+        </com.handmark.pulltorefresh.library.PullToRefreshListView>
     </LinearLayout>
 
 

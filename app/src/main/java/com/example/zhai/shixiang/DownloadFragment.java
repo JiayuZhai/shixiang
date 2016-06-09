@@ -11,6 +11,7 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.DragEvent;
@@ -22,6 +23,14 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
+import com.handmark.pulltorefresh.library.PullToRefreshBase;
+import com.handmark.pulltorefresh.library.PullToRefreshListView;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +38,7 @@ import java.util.Map;
 
 import cn.bmob.v3.Bmob;
 import cn.bmob.v3.BmobQuery;
+import cn.bmob.v3.datatype.BmobFile;
 import cn.bmob.v3.datatype.BmobGeoPoint;
 import cn.bmob.v3.listener.FindListener;
 
@@ -58,17 +68,44 @@ public class DownloadFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_download, container, false);
-        lv = (ListView)view.findViewById(R.id.downloadpiclist);
+        lv = (PullToRefreshListView) view.findViewById(R.id.downloadpiclist);
 
-        lv.setDivider(new ColorDrawable(Color.GREEN));
-        lv.setOnDragListener(new View.OnDragListener() {// 上拉刷新，下拉加载，可能不是这个监听器
+        //lv.setDivider(new ColorDrawable(Color.GREEN));
+        lv.setOnRefreshListener(new PullToRefreshBase.OnRefreshListener<ListView>() {
             @Override
-            public boolean onDrag(View v, DragEvent event) {
-                return false;
+            public void onRefresh(PullToRefreshBase<ListView> refreshView) {
+                // Do work to refresh the list here.
+                new GetDataTask().execute();
             }
         });
 
         return view;
+    }
+
+    private class GetDataTask extends AsyncTask<Void, Void, String[]> {
+        @Override
+        protected String[] doInBackground(Void... params) {
+            return new String[0];
+        }
+
+        @Override
+        protected void onPostExecute(String[] result) {
+            // Call onRefreshComplete when the list has been refreshed.
+            lv.onRefreshComplete();
+            super.onPostExecute(result);
+            //注册广播
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Common.LOCATION_ACTION);
+            getActivity().registerReceiver(new LocationBroadcastReceiver(), filter);
+            Intent intent = new Intent();
+            intent.setClass(getActivity(), LocationSvc.class);
+            //Log.i("running","start over");
+            getActivity().startService(intent);
+            mDialog = new ProgressDialog(getActivity());
+            mDialog.setMessage("正在定位...");
+            mDialog.setCancelable(false);
+            mDialog.show();
+        }
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -110,9 +147,9 @@ public class DownloadFragment extends Fragment {
         void onFragmentInteraction(Uri uri);
     }
 
-    ListView lv;
+    PullToRefreshListView lv;
     SimpleAdapter sa;
-    double maxDistance = 10.0;
+    double maxDistance = 1.0;
     private double mLocationLongitude;
     private double mLocationLatitude;
     private ProgressDialog mDialog;
@@ -122,18 +159,7 @@ public class DownloadFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        //注册广播
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Common.LOCATION_ACTION);
-        getActivity().registerReceiver(new LocationBroadcastReceiver(), filter);
-        Intent intent = new Intent();
-        intent.setClass(getActivity(), LocationSvc.class);
-        //Log.i("running","start over");
-        getActivity().startService(intent);
-        mDialog = new ProgressDialog(getActivity());
-        mDialog.setMessage("正在定位...");
-        mDialog.setCancelable(false);
-        mDialog.show();
+
     }
 
     @Override
@@ -158,67 +184,82 @@ public class DownloadFragment extends Fragment {
             bmobQuery.addWhereWithinKilometers("gpsAdd",point ,maxDistance);
             bmobQuery.setLimit(5);    //获取最接近用户地点的10条数据
 
-            Thread th = new Thread(new Runnable() {
+//            Thread th = new Thread(new Runnable() {
+//                @Override
+//                public void run() {
+            bmobQuery.findObjects(getActivity(), new FindListener<PicInfo>() {
                 @Override
-                public void run() {
-                    bmobQuery.findObjects(getActivity(), new FindListener<PicInfo>() {
-                        @Override
-                        public void onSuccess(List<PicInfo> object) {
-                            // TODO Auto-generated method stub
-                            Toast.makeText(getActivity(), "查询成功：共" + object.size() + "条数据。",Toast.LENGTH_SHORT).show();
-                            for(int i=0;i<object.size();i++){
-                                Map<String, Object> map = new HashMap<String, Object>();
-                                List<Byte> lData = object.get(i).getPic();
-                                byte[] data = new byte[lData.size()];
-                                for(int j=0;j<data.length;j++){
-                                    data[j] = lData.get(j);
-                                }
-
-                                Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
-
-                                Matrix m = new Matrix();
-                                m.setRotate(90);
-                                bm = Bitmap.createBitmap(bm,0,0,bm.getWidth(),bm.getHeight(),m,false);
-
-                                map.put("img",bm);
-                                map.put("timestamp",object.get(i).getPicTime());
-                                map.put("latitude", object.get(i).getGpsAdd().getLatitude());
-                                map.put("longitude", object.get(i).getGpsAdd().getLongitude());
-                                mList.add(map);
-                            }
-
-                            sa = new SimpleAdapter(getActivity(),
-                                    mList,
-                                    R.layout.piclayout,
-                                    new String[]{"img","timestamp","latitude","longitude"},
-                                    new int[]{R.id.img, R.id.timestamp,R.id.latitude,R.id.longitude});
-                            sa.setViewBinder(new SimpleAdapter.ViewBinder() {
-                                @Override
-                                public boolean setViewValue(View view, Object data,
-                                                            String textRepresentation) {
-                                    // TODO Auto-generated method stub
-                                    if (view instanceof ImageView && data instanceof Bitmap) {
-                                        ImageView i = (ImageView) view;
-                                        i.setImageBitmap((Bitmap) data);
-                                        return true;
-                                    }
-                                    return false;
-                                }
-                            });
-                            lv.setAdapter(sa);
-
+                public void onSuccess(List<PicInfo> object) {
+                    // TODO Auto-generated method stub
+                    mDialog.dismiss();
+                    Toast.makeText(getActivity(), "查询成功：共" + object.size() + "条数据。",Toast.LENGTH_SHORT).show();
+                    for(int i=0;i<object.size();i++){
+                        Map<String, Object> map = new HashMap<String, Object>();
+                        BmobFile lData = object.get(i).getPic();
+                        String temp = lData.getFileUrl(getActivity());
+                        URL url = null;
+                        Bitmap bm = null;
+                        try {
+                            url = new URL(temp);
+                            URLConnection conn = url.openConnection();
+                            conn.connect();
+                            InputStream in;
+                            in = conn.getInputStream();
+                            bm = BitmapFactory.decodeStream(in);
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
+
+                        Matrix m = new Matrix();
+                        m.setRotate(90);
+                        bm = Bitmap.createBitmap(bm,0,0,bm.getWidth(),bm.getHeight(),m,false);
+
+                        map.put("img",bm);
+                        map.put("timestamp",object.get(i).getPicTime());
+                        map.put("latitude", object.get(i).getGpsAdd().getLatitude());
+                        map.put("longitude", object.get(i).getGpsAdd().getLongitude());
+                        mList.add(map);
+                    }
+
+                    sa = new SimpleAdapter(getActivity(),
+                            mList,
+                            R.layout.piclayout,
+                            new String[]{"img","timestamp","latitude","longitude"},
+                            new int[]{R.id.img, R.id.timestamp,R.id.latitude,R.id.longitude});
+                    sa.setViewBinder(new SimpleAdapter.ViewBinder() {
                         @Override
-                        public void onError(int code, String msg) {
-                            /// TODO Auto-generated method stub
-                            Toast.makeText(getActivity(), "查询失败：" + msg ,Toast.LENGTH_SHORT).show();
+                        public boolean setViewValue(View view, Object data,
+                                                    String textRepresentation) {
+                            // TODO Auto-generated method stub
+                            if (view instanceof ImageView && data instanceof Bitmap) {
+                                ImageView i = (ImageView) view;
+                                i.setImageBitmap((Bitmap) data);
+                                return true;
+                            }
+                            return false;
                         }
                     });
+                    lv.setAdapter(sa);
+
+                }
+                @Override
+                public void onError(int code, String msg) {
+                    /// TODO Auto-generated method stub
                     mDialog.dismiss();
-                    getActivity().unregisterReceiver(LocationBroadcastReceiver.this);// 不需要时注销
+                    Toast.makeText(getActivity(), "查询失败：" + msg ,Toast.LENGTH_SHORT).show();
                 }
             });
-            th.start();
+            mDialog.dismiss();
+            getActivity().unregisterReceiver(LocationBroadcastReceiver.this);// 不需要时注销
+            mDialog = new ProgressDialog(getActivity());
+            mDialog.setMessage("正在查询据您一公里的照片..");
+            mDialog.setCancelable(false);
+            mDialog.show();
+//                }
+//            });
+//            th.start();
 
         }
     }

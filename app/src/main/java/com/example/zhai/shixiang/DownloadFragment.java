@@ -7,14 +7,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.view.DragEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,10 +33,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import cn.bmob.v3.Bmob;
 import cn.bmob.v3.BmobQuery;
 import cn.bmob.v3.datatype.BmobFile;
 import cn.bmob.v3.datatype.BmobGeoPoint;
+import cn.bmob.v3.listener.DownloadFileListener;
 import cn.bmob.v3.listener.FindListener;
 
 
@@ -180,43 +177,40 @@ public class DownloadFragment extends Fragment {
             //查询一定地理范围内拍摄的照片
             mList = new ArrayList<Map<String,Object>>();//should get from server, format: List<Map<String, Object>>;
 
-            final BmobQuery<PicInfo> bmobQuery = new BmobQuery<PicInfo>();
+            final BmobQuery<PicInfoFile> bmobQuery = new BmobQuery<PicInfoFile>();
             bmobQuery.addWhereWithinKilometers("gpsAdd",point ,maxDistance);
             bmobQuery.setLimit(5);    //获取最接近用户地点的10条数据
 
 //            Thread th = new Thread(new Runnable() {
 //                @Override
 //                public void run() {
-            bmobQuery.findObjects(getActivity(), new FindListener<PicInfo>() {
+            bmobQuery.findObjects(getActivity(), new FindListener<PicInfoFile>() {
                 @Override
-                public void onSuccess(List<PicInfo> object) {
+                public void onSuccess(List<PicInfoFile> object) {
                     // TODO Auto-generated method stub
                     mDialog.dismiss();
                     Toast.makeText(getActivity(), "查询成功：共" + object.size() + "条数据。",Toast.LENGTH_SHORT).show();
                     for(int i=0;i<object.size();i++){
                         Map<String, Object> map = new HashMap<String, Object>();
-                        BmobFile lData = object.get(i).getPic();
-                        String temp = lData.getFileUrl(getActivity());
-                        URL url = null;
-                        Bitmap bm = null;
-                        try {
-                            url = new URL(temp);
-                            URLConnection conn = url.openConnection();
-                            conn.connect();
-                            InputStream in;
-                            in = conn.getInputStream();
-                            bm = BitmapFactory.decodeStream(in);
-                        } catch (MalformedURLException e) {
-                            e.printStackTrace();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        BmobFile pic = object.get(i).getPic();
+                        final int counter = i;
+                        pic.download(getActivity(), new DownloadFileListener() {
+                            @Override
+                            public void onSuccess(String s) {
+                                Toast.makeText(getActivity(),"下载第" + (counter+1) + "张图片成功",Toast.LENGTH_SHORT).show();
+                                Bitmap bm = BitmapFactory.decodeFile(s);
+                                Matrix m = new Matrix();
+                                m.setRotate(90);
+                                bm = Bitmap.createBitmap(bm,0,0,bm.getWidth(),bm.getHeight(),m,false);
+                                mList.get(counter).put("img",bm);
+                                sa.notifyDataSetChanged();
+                            }
 
-                        Matrix m = new Matrix();
-                        m.setRotate(90);
-                        bm = Bitmap.createBitmap(bm,0,0,bm.getWidth(),bm.getHeight(),m,false);
+                            @Override
+                            public void onFailure(int i, String s) {
 
-                        map.put("img",bm);
+                            }
+                        });
                         map.put("timestamp",object.get(i).getPicTime());
                         map.put("latitude", object.get(i).getGpsAdd().getLatitude());
                         map.put("longitude", object.get(i).getGpsAdd().getLongitude());
@@ -241,6 +235,7 @@ public class DownloadFragment extends Fragment {
                             return false;
                         }
                     });
+
                     lv.setAdapter(sa);
 
                 }
@@ -257,9 +252,7 @@ public class DownloadFragment extends Fragment {
             mDialog.setMessage("正在查询据您一公里的照片..");
             mDialog.setCancelable(false);
             mDialog.show();
-//                }
-//            });
-//            th.start();
+
 
         }
     }

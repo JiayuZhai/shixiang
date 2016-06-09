@@ -14,7 +14,7 @@ import cn.bmob.v3.datatype.BmobGeoPoint;
 /**
  * Created by Yingtong Dou on 2016/6/8.
  */
-public class PicInfo extends BmobObject {
+public class PicInfoFile extends BmobObject {
     private BmobDate date;
     private BmobGeoPoint gpsAdd;
     private BmobFile pic;

@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
@@ -26,16 +27,12 @@ import android.widget.Toast;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
 
-import cn.bmob.v3.Bmob;
 import cn.bmob.v3.datatype.BmobFile;
 import cn.bmob.v3.datatype.BmobGeoPoint;
 import cn.bmob.v3.listener.SaveListener;
+import cn.bmob.v3.listener.UploadFileListener;
 
 
 /**
@@ -58,20 +55,10 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
     private Button capture;
     private Button clear;
     private Button viewDatabase;
+    private String picUrl = null;
     private Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
-            Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bm.compress(Bitmap.CompressFormat.JPEG,70,baos);
-            mData = baos.toByteArray();
-            try {
-                baos.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            mData = data;
-
             //Get GPS
 
             //注册广播
@@ -88,6 +75,72 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
             mDialog.setMessage("正在定位...");
             mDialog.setCancelable(false);
             mDialog.show();
+
+
+            Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
+//            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//            bm.compress(Bitmap.CompressFormat.JPEG,70,baos);
+//            mData = baos.toByteArray();
+//            try {
+//                baos.close();
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            mData = data;
+//
+//            bm = BitmapFactory.decodeByteArray(mData, 0, mData.length);
+            Uri uri = Uri.parse(MediaStore.Images.Media.insertImage(getActivity().getContentResolver(), bm, null,null));
+            String[] proj = { MediaStore.Images.Media.DATA };
+            Cursor actualimagecursor = getActivity().managedQuery(uri,proj,null,null,null);
+            int actual_image_column_index = actualimagecursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            actualimagecursor.moveToFirst();
+            String img_path = actualimagecursor.getString(actual_image_column_index);
+            File file = new File(img_path);
+
+            //String s = MediaStore.Images.Media.insertImage(getActivity().getContentResolver(), bm, "from shixiang",null);
+            Log.i("path",img_path);
+            final BmobFile pic = new BmobFile(file);
+            pic.upload(getActivity(), new UploadFileListener() {
+                @Override
+                public void onSuccess() {
+                    Log.i("url",pic.getFileUrl(getActivity()));
+                    //picUrl = pic.getFileUrl(getActivity());
+                    Toast.makeText(getActivity(), "图片上传成功",Toast.LENGTH_SHORT).show();
+
+                    final PicInfoFile upload = new PicInfoFile();
+                    BmobGeoPoint point = new BmobGeoPoint(mLocationLongitude,mLocationLatitude);
+
+                    upload.setPicTime(new Date());
+                    upload.setGpsAdd(point);
+                    upload.setPic(pic);
+
+                    upload.save(getActivity(), new SaveListener() {
+                        @Override
+                        public void onSuccess() {
+                            // TODO Auto-generated method stub
+                            mDialog.dismiss();
+                            Toast.makeText(getActivity(), "上传成功",Toast.LENGTH_SHORT).show();
+                        }
+
+                        @Override
+                        public void onFailure(int code, String msg) {
+                            // TODO Auto-generated method stub
+                            mDialog.dismiss();
+                            Toast.makeText(getActivity(), "上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                }
+
+                @Override
+                public void onFailure(int i, String s) {
+                    Toast.makeText(getActivity(), "图片上传失败" + s,Toast.LENGTH_SHORT).show();
+                    Log.i("error",s);
+                }
+            });
+
+
+
 
         }
     };
@@ -283,45 +336,7 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
             mLocationLongitude = intent.getDoubleExtra(Common.LOCATION_LONGITUDE,0);
             mLoca.setText("纬度" + mLocationLatitude + "\n经度" + mLocationLongitude);
 
-            Bitmap bm = BitmapFactory.decodeByteArray(mData, 0, mData.length);
-            Uri uri = Uri.parse(MediaStore.Images.Media.insertImage(getActivity().getContentResolver(), bm, "from shixiang",null));
-//            //open database
-//            MainDatabase od = new MainDatabase(getActivity());
-//            Date d = new Date();
-//            od.open();
-//            Log.i("time", d.toString());
-//            long success = od.insertData(d.toString(), mLocationLatitude, mLocationLongitude, bm);
-//            od.close();
-            final PicInfo upload = new PicInfo();
-            BmobGeoPoint point = new BmobGeoPoint(mLocationLongitude,mLocationLatitude);
-//            List<Byte> pic = new ArrayList<Byte>();
-//            for(int i=0;i<mData.length;i++){
-//                pic.add(mData[i]);
-//            }
 
-            BmobFile pic = new BmobFile(new File(uri.toString()));
-//            List<Bitmap> pic = new ArrayList<Bitmap>();
-//            pic.add(bm);
-
-            upload.setPicTime(new Date());
-            upload.setGpsAdd(point);
-            upload.setPic(pic);
-
-            upload.save(getActivity(), new SaveListener() {
-                @Override
-                public void onSuccess() {
-                    // TODO Auto-generated method stub
-                    mDialog.dismiss();
-                    Toast.makeText(getActivity(), "上传成功",Toast.LENGTH_SHORT).show();
-                }
-
-                @Override
-                public void onFailure(int code, String msg) {
-                    // TODO Auto-generated method stub
-                    mDialog.dismiss();
-                    Toast.makeText(getActivity(), "上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
-                }
-            });
 
 
             mDialog.dismiss();

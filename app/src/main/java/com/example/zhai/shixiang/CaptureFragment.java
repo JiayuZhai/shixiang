@@ -12,6 +12,7 @@ import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -50,11 +51,11 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
     private Camera mCamera;
     private byte[] mData = {};
     private ProgressDialog mDialog;
-    double mLocationLatitude;
-    double mLocationLongitude;
+    private Double mLocationLatitude;
+    private Double mLocationLongitude;
     private Button capture;
-    private Button clear;
-    private Button viewDatabase;
+//    private Button clear;
+//    private Button viewDatabase;
     private String picUrl = null;
     private Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
         @Override
@@ -78,17 +79,7 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
 
 
             Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
-//            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//            bm.compress(Bitmap.CompressFormat.JPEG,70,baos);
-//            mData = baos.toByteArray();
-//            try {
-//                baos.close();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            mData = data;
-//
-//            bm = BitmapFactory.decodeByteArray(mData, 0, mData.length);
+
             Uri uri = Uri.parse(MediaStore.Images.Media.insertImage(getActivity().getContentResolver(), bm, null,null));
             String[] proj = { MediaStore.Images.Media.DATA };
             Cursor actualimagecursor = getActivity().managedQuery(uri,proj,null,null,null);
@@ -108,12 +99,12 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
                     Toast.makeText(getActivity(), "图片上传成功",Toast.LENGTH_SHORT).show();
 
                     final PicInfoFile upload = new PicInfoFile();
+                    while(mLocationLongitude.doubleValue() == 0 || mLocationLatitude.doubleValue() == 0);
                     BmobGeoPoint point = new BmobGeoPoint(mLocationLongitude,mLocationLatitude);
 
                     upload.setPicTime(new Date());
                     upload.setGpsAdd(point);
                     upload.setPic(pic);
-
                     upload.save(getActivity(), new SaveListener() {
                         @Override
                         public void onSuccess() {
@@ -152,12 +143,12 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
                 case R.id.capture:
                     capture();
                     break;
-                case R.id.clear:
-                    clear();
-                    break;
-                case R.id.viewDatabase:
-                    viewDatabase();
-                    break;
+//                case R.id.clear:
+//                    clear();
+//                    break;
+//                case R.id.viewDatabase:
+//                    viewDatabase();
+//                    break;
             }
         }
     };
@@ -180,11 +171,11 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
         mPreview = (SurfaceView) view.findViewById(R.id.preview);
         mLoca = (TextView) view.findViewById(R.id.tv_loca);
         capture = (Button) view.findViewById(R.id.capture);
-        clear = (Button) view.findViewById(R.id.clear);
-        viewDatabase = (Button) view.findViewById(R.id.viewDatabase);
+//        clear = (Button) view.findViewById(R.id.clear);
+//        viewDatabase = (Button) view.findViewById(R.id.viewDatabase);
         capture.setOnClickListener(listener);
-        clear.setOnClickListener(listener);
-        viewDatabase.setOnClickListener(listener);
+//        clear.setOnClickListener(listener);
+//        viewDatabase.setOnClickListener(listener);
 
 
         mHolder = mPreview.getHolder();
@@ -335,9 +326,6 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
             mLocationLatitude = intent.getDoubleExtra(Common.LOCATION_LATITUDE,0);
             mLocationLongitude = intent.getDoubleExtra(Common.LOCATION_LONGITUDE,0);
             mLoca.setText("纬度" + mLocationLatitude + "\n经度" + mLocationLongitude);
-
-
-
 
             mDialog.dismiss();
             getActivity().unregisterReceiver(this);// 不需要时注销

@@ -18,6 +18,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
@@ -75,7 +76,7 @@ public class DownloadFragment extends Fragment {
                 new GetDataTask().execute();
             }
         });
-
+        mtv = (TextView) view.findViewById(R.id.update);
         return view;
     }
 
@@ -144,14 +145,14 @@ public class DownloadFragment extends Fragment {
         void onFragmentInteraction(Uri uri);
     }
 
-    PullToRefreshListView lv;
-    SimpleAdapter sa;
-    double maxDistance = 1.0;
+    private PullToRefreshListView lv;
+    private SimpleAdapter sa;
+    private final double maxDistance = 5.0;
     private double mLocationLongitude;
     private double mLocationLatitude;
     private ProgressDialog mDialog;
     private List<Map<String,Object>> mList;
-
+    private TextView mtv;
 
     @Override
     public void onResume() {
@@ -189,6 +190,7 @@ public class DownloadFragment extends Fragment {
                 public void onSuccess(List<PicInfoFile> object) {
                     // TODO Auto-generated method stub
                     mDialog.dismiss();
+                    mtv.setVisibility(View.INVISIBLE);
                     Toast.makeText(getActivity(), "查询成功：共" + object.size() + "条数据。",Toast.LENGTH_SHORT).show();
                     for(int i=0;i<object.size();i++){
                         Map<String, Object> map = new HashMap<String, Object>();
@@ -249,7 +251,7 @@ public class DownloadFragment extends Fragment {
             mDialog.dismiss();
             getActivity().unregisterReceiver(LocationBroadcastReceiver.this);// 不需要时注销
             mDialog = new ProgressDialog(getActivity());
-            mDialog.setMessage("正在查询据您一公里的照片..");
+            mDialog.setMessage("正在查询据您" + maxDistance + "公里的照片..");
             mDialog.setCancelable(false);
             mDialog.show();
 

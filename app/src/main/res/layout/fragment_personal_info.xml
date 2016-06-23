@@ -1,0 +1,57 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.zhai.shixiang.PersonalInfoFragment">
+
+    <!-- TODO: Update blank fragment layout -->
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="left|top"
+        android:weightSum="1">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_gravity="center_horizontal">
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/imageView"
+                android:src="@drawable/logo_icon"
+                android:layout_alignParentTop="true"
+                android:layout_centerHorizontal="true" />
+
+        </RelativeLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Shiaring"
+            android:id="@+id/UserName"
+            android:layout_gravity="center_horizontal"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pull_to_update"
+            android:id="@+id/update2"
+            android:layout_gravity="center_horizontal"
+            android:textSize="@dimen/abc_text_size_display_1_material" />
+
+        <com.handmark.pulltorefresh.library.PullToRefreshListView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/personalpiclist"
+            android:background="@android:color/darker_gray">
+
+        </com.handmark.pulltorefresh.library.PullToRefreshListView>
+
+    </LinearLayout>
+</FrameLayout>

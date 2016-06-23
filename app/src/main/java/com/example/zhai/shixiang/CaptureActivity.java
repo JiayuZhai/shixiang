@@ -1,5 +1,7 @@
 package com.example.zhai.shixiang;
 
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -11,10 +13,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
@@ -25,7 +28,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.Date;
@@ -35,14 +37,21 @@ import cn.bmob.v3.datatype.BmobGeoPoint;
 import cn.bmob.v3.listener.SaveListener;
 import cn.bmob.v3.listener.UploadFileListener;
 
+public class CaptureActivity extends AppCompatActivity implements SurfaceHolder.Callback{
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link CaptureFragment.OnFragmentInteractionListener} interface
- * to handle interaction events.
- */
-public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_capture);
+        mPreview = (SurfaceView)findViewById(R.id.preview);
+        mLoca = (TextView)findViewById(R.id.tv_loca);
+        capture = (Button)findViewById(R.id.capture);
+        capture.setOnClickListener(listener);
+
+        mHolder = mPreview.getHolder();
+        mHolder.addCallback(this);
+    }
+
     private OnFragmentInteractionListener mListener;
 
     private SurfaceView mPreview;
@@ -54,7 +63,7 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
     private Double mLocationLatitude;
     private Double mLocationLongitude;
     private Button capture;
-//    private Button clear;
+    //    private Button clear;
 //    private Button viewDatabase;
     private String picUrl = null;
     private Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
@@ -65,14 +74,14 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
             //注册广播
             IntentFilter filter = new IntentFilter();
             filter.addAction(Common.LOCATION_ACTION);
-            getActivity().registerReceiver(new LocationBroadcastReceiver(), filter);
+            CaptureActivity.this.registerReceiver(new LocationBroadcastReceiver(), filter);
 
             Intent intent = new Intent();
-            intent.setClass(getActivity(), LocationSvc.class);
+            intent.setClass(CaptureActivity.this, LocationSvc.class);
             //Log.i("running","start over");
-            getActivity().startService(intent);
+            CaptureActivity.this.startService(intent);
 
-            mDialog = new ProgressDialog(getActivity());
+            mDialog = new ProgressDialog(CaptureActivity.this);
             mDialog.setMessage("正在定位...");
             mDialog.setCancelable(false);
             mDialog.show();
@@ -80,23 +89,23 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
 
             Bitmap bm = BitmapFactory.decodeByteArray(data, 0, data.length);
 
-            Uri uri = Uri.parse(MediaStore.Images.Media.insertImage(getActivity().getContentResolver(), bm, null,null));
+            Uri uri = Uri.parse(MediaStore.Images.Media.insertImage(CaptureActivity.this.getContentResolver(), bm, null,null));
             String[] proj = { MediaStore.Images.Media.DATA };
-            Cursor actualimagecursor = getActivity().managedQuery(uri,proj,null,null,null);
+            Cursor actualimagecursor = CaptureActivity.this.managedQuery(uri,proj,null,null,null);
             int actual_image_column_index = actualimagecursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
             actualimagecursor.moveToFirst();
             String img_path = actualimagecursor.getString(actual_image_column_index);
             File file = new File(img_path);
 
-            //String s = MediaStore.Images.Media.insertImage(getActivity().getContentResolver(), bm, "from shixiang",null);
+            //String s = MediaStore.Images.Media.insertImage(this.getContentResolver(), bm, "from shixiang",null);
             Log.i("path",img_path);
             final BmobFile pic = new BmobFile(file);
-            pic.upload(getActivity(), new UploadFileListener() {
+            pic.upload(CaptureActivity.this, new UploadFileListener() {
                 @Override
                 public void onSuccess() {
-                    Log.i("url",pic.getFileUrl(getActivity()));
-                    //picUrl = pic.getFileUrl(getActivity());
-                    Toast.makeText(getActivity(), "图片上传成功",Toast.LENGTH_SHORT).show();
+                    Log.i("url",pic.getFileUrl(CaptureActivity.this));
+                    //picUrl = pic.getFileUrl(this);
+                    Toast.makeText(CaptureActivity.this, "图片上传成功",Toast.LENGTH_SHORT).show();
 
                     final PicInfoFile upload = new PicInfoFile();
                     while(mLocationLongitude.doubleValue() == 0 || mLocationLatitude.doubleValue() == 0);
@@ -105,19 +114,29 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
                     upload.setPicTime(new Date());
                     upload.setGpsAdd(point);
                     upload.setPic(pic);
-                    upload.save(getActivity(), new SaveListener() {
+                    upload.setUserID("Shiaring");
+                    upload.save(CaptureActivity.this, new SaveListener() {
                         @Override
                         public void onSuccess() {
                             // TODO Auto-generated method stub
                             mDialog.dismiss();
-                            Toast.makeText(getActivity(), "上传成功",Toast.LENGTH_SHORT).show();
+                            Toast.makeText(CaptureActivity.this, "上传成功",Toast.LENGTH_SHORT).show();
+
+                            new Handler().postDelayed(new Runnable(){
+
+                                @Override
+                                public void run() {
+                                    finish();
+                                }
+
+                            }, 1000);
                         }
 
                         @Override
                         public void onFailure(int code, String msg) {
                             // TODO Auto-generated method stub
                             mDialog.dismiss();
-                            Toast.makeText(getActivity(), "上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
+                            Toast.makeText(CaptureActivity.this, "上传失败！错误码为：" + msg,Toast.LENGTH_SHORT).show();
                         }
                     });
 
@@ -125,7 +144,7 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
 
                 @Override
                 public void onFailure(int i, String s) {
-                    Toast.makeText(getActivity(), "图片上传失败" + s,Toast.LENGTH_SHORT).show();
+                    Toast.makeText(CaptureActivity.this, "图片上传失败" + s,Toast.LENGTH_SHORT).show();
                     Log.i("error",s);
                 }
             });
@@ -153,54 +172,7 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
         }
     };
 
-    public CaptureFragment() {
-        // Required empty public constructor
-    }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-    }
-
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_capture, container, false);
-
-        mPreview = (SurfaceView) view.findViewById(R.id.preview);
-        mLoca = (TextView) view.findViewById(R.id.tv_loca);
-        capture = (Button) view.findViewById(R.id.capture);
-//        clear = (Button) view.findViewById(R.id.clear);
-//        viewDatabase = (Button) view.findViewById(R.id.viewDatabase);
-        capture.setOnClickListener(listener);
-//        clear.setOnClickListener(listener);
-//        viewDatabase.setOnClickListener(listener);
-
-
-        mHolder = mPreview.getHolder();
-        mHolder.addCallback(this);
-        return view;
-    }
-
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
-        }
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        mListener = null;
-
-    }
 
     @Override
     public void onResume() {
@@ -250,14 +222,14 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
     }
 
     public void clear(){
-        MainDatabase od = new MainDatabase(getActivity());
+        MainDatabase od = new MainDatabase(this);
         od.open();
         od.clearDatabase();
         od.close();
     }
 
     public void viewDatabase(){
-        Intent i = new Intent(getActivity(), PicListActivity.class);
+        Intent i = new Intent(this, PicListActivity.class);
         startActivity(i);
     }
 
@@ -328,13 +300,12 @@ public class CaptureFragment extends Fragment implements SurfaceHolder.Callback{
             mLoca.setText("纬度" + mLocationLatitude + "\n经度" + mLocationLongitude);
 
             mDialog.dismiss();
-            getActivity().unregisterReceiver(this);// 不需要时注销
+            CaptureActivity.this.unregisterReceiver(this);// 不需要时注销
 
-            mDialog = new ProgressDialog(getActivity());
+            mDialog = new ProgressDialog(CaptureActivity.this);
             mDialog.setMessage("正在上传..");
             mDialog.setCancelable(false);
             mDialog.show();
         }
     }
-
 }

@@ -18,6 +18,7 @@ public class PicInfoFile extends BmobObject {
     private BmobDate date;
     private BmobGeoPoint gpsAdd;
     private BmobFile pic;
+    private String userID;
 
     public void setPicTime(Date date){
         this.date = new BmobDate(date);
@@ -38,5 +39,13 @@ public class PicInfoFile extends BmobObject {
     }
     public void setPic(BmobFile pic){
         this.pic = pic;
+    }
+
+    public String getUserID() {
+        return userID;
+    }
+
+    public void setUserID(String userID) {
+        this.userID = userID;
     }
 }

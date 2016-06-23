@@ -11,5 +11,6 @@
     <string name="dummy_button">Dummy Button</string>
     <string name="dummy_content">DUMMY\nCONTENT</string>
     <string name="title_activity_main">Shiaring</string>
-    <string name="pull_to_update">下拉刷新</string>
+    <string name="pull_to_update">下拉刷新获得内容</string>
+    <string name="capture">capture</string>
 </resources>

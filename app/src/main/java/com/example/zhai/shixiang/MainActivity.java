@@ -16,12 +16,15 @@ import android.widget.LinearLayout;
 
 import java.io.InputStream;
 
+import cn.bmob.v3.Bmob;
+
 public class MainActivity extends AppCompatActivity {
     ImageView miv;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Bmob.initialize(this, "087ee08e4ffbd42c7602d0facd018f71");
         miv = (ImageView)findViewById(R.id.start_page);
 
         BitmapFactory.Options opt = new BitmapFactory.Options();

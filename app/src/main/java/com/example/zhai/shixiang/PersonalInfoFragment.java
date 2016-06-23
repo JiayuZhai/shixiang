@@ -1,7 +1,6 @@
 package com.example.zhai.shixiang;
 
 import android.app.ProgressDialog;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -24,11 +23,6 @@ import android.widget.Toast;
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +30,6 @@ import java.util.Map;
 
 import cn.bmob.v3.BmobQuery;
 import cn.bmob.v3.datatype.BmobFile;
-import cn.bmob.v3.datatype.BmobGeoPoint;
 import cn.bmob.v3.listener.DownloadFileListener;
 import cn.bmob.v3.listener.FindListener;
 
@@ -44,16 +37,21 @@ import cn.bmob.v3.listener.FindListener;
 /**
  * A simple {@link Fragment} subclass.
  * Activities that contain this fragment must implement the
- * {@link DownloadFragment.OnFragmentInteractionListener} interface
+ * {@link PersonalInfoFragment.OnFragmentInteractionListener} interface
  * to handle interaction events.
  */
-public class DownloadFragment extends Fragment {
+public class PersonalInfoFragment extends Fragment {
+    private PullToRefreshListView lv;
+    private TextView mtv;
+    private SimpleAdapter sa;
+    private List<Map<String,Object>> mList;
+    private ProgressDialog mDialog;
+
     private OnFragmentInteractionListener mListener;
 
-    public DownloadFragment() {
+    public PersonalInfoFragment() {
         // Required empty public constructor
     }
-
 
 
     @Override
@@ -65,9 +63,8 @@ public class DownloadFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_download, container, false);
-        lv = (PullToRefreshListView) view.findViewById(R.id.downloadpiclist);
-
+        View view = inflater.inflate(R.layout.fragment_personal_info, container, false);
+        lv = (PullToRefreshListView) view.findViewById(R.id.personalpiclist);
         //lv.setDivider(new ColorDrawable(Color.GREEN));
         lv.setOnRefreshListener(new PullToRefreshBase.OnRefreshListener<ListView>() {
             @Override
@@ -76,42 +73,10 @@ public class DownloadFragment extends Fragment {
                 new GetDataTask().execute();
             }
         });
-        mtv = (TextView) view.findViewById(R.id.update);
+        mtv = (TextView) view.findViewById(R.id.update2);
         return view;
     }
 
-    private class GetDataTask extends AsyncTask<Void, Void, String[]> {
-        @Override
-        protected String[] doInBackground(Void... params) {
-            return new String[0];
-        }
-
-        @Override
-        protected void onPostExecute(String[] result) {
-            // Call onRefreshComplete when the list has been refreshed.
-            lv.onRefreshComplete();
-            super.onPostExecute(result);
-            //注册广播
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(Common.LOCATION_ACTION);
-            getActivity().registerReceiver(new LocationBroadcastReceiver(), filter);
-            Intent intent = new Intent();
-            intent.setClass(getActivity(), LocationSvc.class);
-            //Log.i("running","start over");
-            getActivity().startService(intent);
-            mDialog = new ProgressDialog(getActivity());
-            mDialog.setMessage("正在定位...");
-            mDialog.setCancelable(false);
-            mDialog.show();
-        }
-    }
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
 
     @Override
     public void onAttach(Context context) {
@@ -144,58 +109,36 @@ public class DownloadFragment extends Fragment {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
-
-    private PullToRefreshListView lv;
-    private SimpleAdapter sa;
-    private final double maxDistance = 5.0;
-    private double mLocationLongitude;
-    private double mLocationLatitude;
-    private ProgressDialog mDialog;
-    private List<Map<String,Object>> mList;
-    private TextView mtv;
-
-    @Override
-    public void onResume() {
-        super.onResume();
-
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        lv.setAdapter(null);
-    }
-
-    private class LocationBroadcastReceiver extends BroadcastReceiver {
+    private class GetDataTask extends AsyncTask<Void, Void, String[]> {
+        @Override
+        protected String[] doInBackground(Void... params) {
+            return new String[0];
+        }
 
         @Override
-        public void onReceive(Context context, Intent intent) {
-            if (!intent.getAction().equals(Common.LOCATION_ACTION)) return;
-            mLocationLatitude = intent.getDoubleExtra(Common.LOCATION_LATITUDE,0);
-            mLocationLongitude = intent.getDoubleExtra(Common.LOCATION_LONGITUDE,0);
+        protected void onPostExecute(String[] result) {
+            // Call onRefreshComplete when the list has been refreshed.
+            lv.onRefreshComplete();
+            super.onPostExecute(result);
 
-            BmobGeoPoint point = new BmobGeoPoint(mLocationLongitude,mLocationLatitude);
-            //查询一定地理范围内拍摄的照片
-            mList = new ArrayList<Map<String,Object>>();//should get from server, format: List<Map<String, Object>>;
-
+            mList = new ArrayList<Map<String,Object>>();
             final BmobQuery<PicInfoFile> bmobQuery = new BmobQuery<PicInfoFile>();
-            bmobQuery.addWhereWithinKilometers("gpsAdd",point ,maxDistance);
-            bmobQuery.setLimit(5);    //获取最接近用户地点的10条数据
-
-//            Thread th = new Thread(new Runnable() {
-//                @Override
-//                public void run() {
+            bmobQuery.addWhereMatches("userID","shiaring");
+            bmobQuery.setLimit(5);    //获取该用户的最近5条
+            mDialog = new ProgressDialog(getActivity());
+            mDialog.setMessage("正在查询您最近上传的照片..");
+            mDialog.setCancelable(false);
+            mDialog.show();
             bmobQuery.findObjects(getActivity(), new FindListener<PicInfoFile>() {
                 @Override
-                public void onSuccess(List<PicInfoFile> object) {
-                    // TODO Auto-generated method stub
+                public void onSuccess(List<PicInfoFile> list) {
                     mDialog.dismiss();
                     mtv.setVisibility(View.INVISIBLE);
                     mtv.setHeight(0);
-                    Toast.makeText(getActivity(), "查询成功：共" + object.size() + "条数据。",Toast.LENGTH_SHORT).show();
-                    for(int i=0;i<object.size();i++){
+                    Toast.makeText(getActivity(), "查询成功：共" + list.size() + "条数据。",Toast.LENGTH_SHORT).show();
+                    for(int i=0;i<list.size();i++){
                         Map<String, Object> map = new HashMap<String, Object>();
-                        BmobFile pic = object.get(i).getPic();
+                        BmobFile pic = list.get(i).getPic();
                         final int counter = i;
                         pic.download(getActivity(), new DownloadFileListener() {
                             @Override
@@ -214,9 +157,9 @@ public class DownloadFragment extends Fragment {
 
                             }
                         });
-                        map.put("timestamp",object.get(i).getPicTime());
-                        map.put("latitude", object.get(i).getGpsAdd().getLatitude());
-                        map.put("longitude", object.get(i).getGpsAdd().getLongitude());
+                        map.put("timestamp",list.get(i).getPicTime());
+                        map.put("latitude", list.get(i).getGpsAdd().getLatitude());
+                        map.put("longitude", list.get(i).getGpsAdd().getLongitude());
                         mList.add(map);
                     }
 
@@ -242,21 +185,12 @@ public class DownloadFragment extends Fragment {
                     lv.setAdapter(sa);
 
                 }
+
                 @Override
-                public void onError(int code, String msg) {
-                    /// TODO Auto-generated method stub
-                    mDialog.dismiss();
-                    Toast.makeText(getActivity(), "查询失败：" + msg ,Toast.LENGTH_SHORT).show();
+                public void onError(int i, String s) {
+
                 }
             });
-            mDialog.dismiss();
-            getActivity().unregisterReceiver(LocationBroadcastReceiver.this);// 不需要时注销
-            mDialog = new ProgressDialog(getActivity());
-            mDialog.setMessage("正在查询据您" + maxDistance + "公里的照片..");
-            mDialog.setCancelable(false);
-            mDialog.show();
-
-
         }
     }
 }

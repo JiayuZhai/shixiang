@@ -42,8 +42,9 @@ import cn.bmob.v3.Bmob;
 import cn.bmob.v3.datatype.BmobGeoPoint;
 import cn.bmob.v3.listener.SaveListener;
 
-public class Main2Activity extends AppCompatActivity implements CaptureFragment.OnFragmentInteractionListener,
-        DownloadFragment.OnFragmentInteractionListener{
+public class Main2Activity extends AppCompatActivity implements
+        DownloadFragment.OnFragmentInteractionListener,
+        PersonalInfoFragment.OnFragmentInteractionListener{
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -66,7 +67,6 @@ public class Main2Activity extends AppCompatActivity implements CaptureFragment.
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
-        Bmob.initialize(this, "087ee08e4ffbd42c7602d0facd018f71");
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -99,7 +99,10 @@ public class Main2Activity extends AppCompatActivity implements CaptureFragment.
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_camera) {
+            Intent intent = new Intent(Main2Activity.this, CaptureActivity.class);
+            startActivity(intent);
+
             return true;
         }
 
@@ -129,10 +132,10 @@ public class Main2Activity extends AppCompatActivity implements CaptureFragment.
             Fragment fragment = null;
             switch (sectionNumber){
                 case 1:
-                    fragment = new CaptureFragment();
+                    fragment = new DownloadFragment();
                     break;
                 case 2:
-                    fragment = new DownloadFragment();
+                    fragment = new PersonalInfoFragment();
                     break;
 
             }
@@ -170,9 +173,11 @@ public class Main2Activity extends AppCompatActivity implements CaptureFragment.
         public CharSequence getPageTitle(int position) {
             switch (position) {
                 case 0:
-                    return "Capture";
-                case 1:
                     return "Download";
+                case 1:
+                    return "Personal";
+//                case 2:
+//                    return "Capture";
             }
             return null;
         }

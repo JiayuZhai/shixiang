@@ -14,11 +14,13 @@
             android:layout_height="wrap_content"
             android:text="@string/pull_to_update"
             android:id="@+id/update"
-            android:gravity="center_vertical|center_horizontal" />
+            android:gravity="center_vertical|center_horizontal"
+            android:textSize="@dimen/abc_text_size_display_1_material" />
         <com.handmark.pulltorefresh.library.PullToRefreshListView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:id="@+id/downloadpiclist">
+            android:id="@+id/downloadpiclist"
+            android:background="@android:color/darker_gray">
 
         </com.handmark.pulltorefresh.library.PullToRefreshListView>
     </LinearLayout>
